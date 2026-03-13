@@ -1,6 +1,6 @@
 # n8n-nodes-claudeway
 
-This is an n8n community node for [Claudeway](https://github.com/alicansoysal/claudeway) — a high-performance HTTP gateway for the Claude CLI.
+This is an n8n community node for [Claudeway](https://github.com/alicanso/claudeway) — a high-performance HTTP gateway for the Claude CLI.
 
 Use Claude AI in your n8n workflows through Claudeway's REST API, with full support for one-shot tasks, streaming, persistent multi-turn sessions, and cost tracking.
 
@@ -12,7 +12,7 @@ Follow the [installation guide](https://docs.n8n.io/integrations/community-nodes
 
 ## Prerequisites
 
-You need a running [Claudeway](https://github.com/alicansoysal/claudeway) server with an API key configured.
+You need a running [Claudeway](https://github.com/alicanso/claudeway) server with an API key configured.
 
 ## Credentials
 

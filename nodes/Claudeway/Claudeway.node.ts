@@ -13,6 +13,7 @@ import { claudewayApiRequest, claudewayApiRequestSSE } from './GenericFunctions'
 import { taskOperations, taskFields } from './descriptions/TaskDescription';
 import { sessionOperations, sessionFields } from './descriptions/SessionDescription';
 import { adminOperations, adminFields } from './descriptions/AdminDescription';
+import { repoOperations, repoFields } from './descriptions/RepoDescription';
 
 export class Claudeway implements INodeType {
 	description: INodeTypeDescription = {
@@ -53,6 +54,10 @@ export class Claudeway implements INodeType {
 						name: 'Admin',
 						value: 'admin',
 					},
+					{
+						name: 'Repo',
+						value: 'repo',
+					},
 				],
 				default: 'task',
 			},
@@ -62,6 +67,8 @@ export class Claudeway implements INodeType {
 			...sessionFields,
 			...adminOperations,
 			...adminFields,
+			...repoOperations,
+			...repoFields,
 		],
 	};
 
@@ -103,6 +110,8 @@ export class Claudeway implements INodeType {
 					responseData = await executeSession.call(this, operation, i);
 				} else if (resource === 'admin') {
 					responseData = await executeAdmin.call(this, operation, i);
+				} else if (resource === 'repo') {
+					responseData = await executeRepo.call(this, operation, i);
 				} else {
 					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, { itemIndex: i });
 				}
@@ -241,4 +250,27 @@ async function executeAdmin(
 	}
 
 	throw new NodeOperationError(this.getNode(), `Unknown admin operation: ${operation}`, { itemIndex });
+}
+
+async function executeRepo(
+	this: IExecuteFunctions,
+	operation: string,
+	itemIndex: number,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any> {
+	if (operation === 'sync') {
+		const repoUrl = this.getNodeParameter('repoUrl', itemIndex) as string;
+		const branch = this.getNodeParameter('branch', itemIndex, '') as string;
+
+		const body: IDataObject = { url: repoUrl };
+		if (branch) body.branch = branch;
+
+		return claudewayApiRequest.call(this, 'POST', '/repos/sync', body);
+	}
+
+	if (operation === 'list') {
+		return claudewayApiRequest.call(this, 'GET', '/repos');
+	}
+
+	throw new NodeOperationError(this.getNode(), `Unknown repo operation: ${operation}`, { itemIndex });
 }

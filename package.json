@@ -10,10 +10,10 @@
 		"llm"
 	],
 	"license": "MIT",
-	"homepage": "https://github.com/alicansoysal/n8n-nodes-claudeway",
+	"homepage": "https://github.com/alicanso/n8n-nodes-claudeway",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/alicansoysal/n8n-nodes-claudeway.git"
+		"url": "https://github.com/alicanso/n8n-nodes-claudeway.git"
 	},
 	"main": "dist/nodes/Claudeway/Claudeway.node.js",
 	"scripts": {
