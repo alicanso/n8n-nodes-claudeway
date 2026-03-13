@@ -1,0 +1,213 @@
+{
+  "name": "Claudeway Test Workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-1",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "resource": "admin",
+        "operation": "health"
+      },
+      "id": "health-1",
+      "name": "Health Check",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [480, 160],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "operation": "run",
+        "prompt": "Merhaba! Sen kimsin? Kısa cevap ver.",
+        "model": "",
+        "additionalFields": {
+          "timeoutSecs": 120
+        }
+      },
+      "id": "task-1",
+      "name": "Run Task",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [480, 300],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "operation": "runStream",
+        "prompt": "1'den 5'e kadar say ve her sayıyı açıkla.",
+        "model": "",
+        "includeStreamingText": true,
+        "additionalFields": {
+          "timeoutSecs": 120
+        }
+      },
+      "id": "stream-1",
+      "name": "Streaming Task",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [480, 440],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "session",
+        "operation": "start",
+        "model": "",
+        "additionalFields": {}
+      },
+      "id": "session-start-1",
+      "name": "Start Session",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [480, 600],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "session",
+        "operation": "continue",
+        "sessionId": "={{ $json.session_id }}",
+        "prompt": "Benim adım Ali. Bunu hatırla.",
+        "timeoutSecs": 600
+      },
+      "id": "session-continue-1",
+      "name": "Continue Session (1)",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [720, 600],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "session",
+        "operation": "continue",
+        "sessionId": "={{ $('Start Session').item.json.session_id }}",
+        "prompt": "Adımı hatırlıyor musun?",
+        "timeoutSecs": 600
+      },
+      "id": "session-continue-2",
+      "name": "Continue Session (2)",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [960, 600],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "session",
+        "operation": "getInfo",
+        "sessionId": "={{ $('Start Session').item.json.session_id }}"
+      },
+      "id": "session-info-1",
+      "name": "Get Session Info",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [1200, 600],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "session",
+        "operation": "delete",
+        "sessionId": "={{ $('Start Session').item.json.session_id }}"
+      },
+      "id": "session-delete-1",
+      "name": "Delete Session",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [1440, 600],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          { "node": "Health Check", "type": "main", "index": 0 },
+          { "node": "Run Task", "type": "main", "index": 0 },
+          { "node": "Streaming Task", "type": "main", "index": 0 },
+          { "node": "Start Session", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Start Session": {
+      "main": [
+        [
+          { "node": "Continue Session (1)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Continue Session (1)": {
+      "main": [
+        [
+          { "node": "Continue Session (2)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Continue Session (2)": {
+      "main": [
+        [
+          { "node": "Get Session Info", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Get Session Info": {
+      "main": [
+        [
+          { "node": "Delete Session", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

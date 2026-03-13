@@ -1,0 +1,139 @@
+{
+  "name": "GitHub Issue Analyzer (Claudeway + Slack)",
+  "nodes": [
+    {
+      "parameters": {
+        "owner": "assos",
+        "repository": "={{ $parameter.repository }}",
+        "events": ["issues"],
+        "options": {}
+      },
+      "id": "github-trigger",
+      "name": "GitHub Issue Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "github-issue-trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-opened",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "opened",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-opened",
+      "name": "Only Opened Issues",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "operation": "run",
+        "prompt": "=Aşağıdaki GitHub issue'yu analiz et.\n\n## Issue Bilgileri\n- **Repo:** {{ $json.body.repository.full_name }}\n- **Başlık:** {{ $json.body.issue.title }}\n- **Açıklayan:** {{ $json.body.issue.user.login }}\n- **Labels:** {{ $json.body.issue.labels.map(l => l.name).join(', ') || 'Yok' }}\n\n## Issue İçeriği\n{{ $json.body.issue.body }}\n\n---\n\nBu issue'yu analiz et ve aşağıdaki formatta JSON döndür (sadece JSON, başka bir şey yazma):\n\n```json\n{\n  \"type\": \"feature\" veya \"bug\",\n  \"summary\": \"Kısa özet (1-2 cümle)\",\n  \"priority\": \"high\" / \"medium\" / \"low\",\n  \"reasoning\": \"Neden bu tür olarak sınıflandırdın (1 cümle)\",\n  \"todo_list\": [\n    \"Yapılacak adım 1\",\n    \"Yapılacak adım 2\",\n    \"Yapılacak adım 3\"\n  ],\n  \"estimated_complexity\": \"simple\" / \"moderate\" / \"complex\"\n}\n```\n\nKurallar:\n- Eğer bir hata/sorun bildiriyorsa type=bug\n- Eğer yeni bir özellik/iyileştirme istiyorsa type=feature\n- Todo list en az 3, en fazla 7 adım olsun\n- Her adım spesifik ve aksiyona dönüştürülebilir olsun",
+        "model": "",
+        "additionalFields": {
+          "timeoutSecs": 120
+        }
+      },
+      "id": "claudeway-analyze",
+      "name": "Claudeway: Analyze Issue",
+      "type": "n8n-nodes-claudeway.claudeway",
+      "typeVersion": 1,
+      "position": [720, 300],
+      "credentials": {
+        "claudewayApi": {
+          "id": "new",
+          "name": "Claudeway API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Claudeway'den gelen result text'ini parse et\nconst resultText = $input.first().json.result || $input.first().json.text || '';\n\n// JSON bloğunu bul\nlet jsonStr = resultText;\nconst jsonMatch = resultText.match(/```json\\s*([\\s\\S]*?)```/);\nif (jsonMatch) {\n  jsonStr = jsonMatch[1].trim();\n} else {\n  // JSON objesini direkt bulmaya çalış\n  const objMatch = resultText.match(/\\{[\\s\\S]*\\}/);\n  if (objMatch) {\n    jsonStr = objMatch[0];\n  }\n}\n\nconst analysis = JSON.parse(jsonStr);\n\n// Orijinal issue bilgilerini de ekle\nconst issue = $('Only Opened Issues').first().json.body.issue;\n\nconst typeEmoji = analysis.type === 'bug' ? '🐛' : '✨';\nconst priorityEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[analysis.priority] || '⚪';\nconst complexityMap = { simple: 'Basit', moderate: 'Orta', complex: 'Karmaşık' };\n\n// Slack mesajı oluştur\nconst todoFormatted = analysis.todo_list.map((item, i) => `${i + 1}. ${item}`).join('\\n');\n\nconst slackMessage = `${typeEmoji} *${analysis.type === 'bug' ? 'Bug Report' : 'Feature Request'}* ${priorityEmoji} ${analysis.priority.toUpperCase()}\n\n*Issue:* <${issue.html_url}|#${issue.number} - ${issue.title}>\n*Açıklayan:* ${issue.user.login}\n*Karmaşıklık:* ${complexityMap[analysis.estimated_complexity] || analysis.estimated_complexity}\n\n> ${analysis.summary}\n\n*Neden ${analysis.type}:* ${analysis.reasoning}\n\n📋 *Yapılacaklar:*\n${todoFormatted}`;\n\nreturn [{\n  json: {\n    ...analysis,\n    issue_number: issue.number,\n    issue_title: issue.title,\n    issue_url: issue.html_url,\n    slack_message: slackMessage\n  }\n}];"
+      },
+      "id": "parse-response",
+      "name": "Parse Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $parameter.slackChannel || 'C0XXXXXXX' }}"
+        },
+        "text": "={{ $json.slack_message }}",
+        "otherOptions": {
+          "mrkdwn": true,
+          "unfurl_links": false
+        }
+      },
+      "id": "slack-send",
+      "name": "Slack: Send Analysis",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1200, 300],
+      "credentials": {
+        "slackApi": {
+          "id": "new",
+          "name": "Slack API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GitHub Issue Trigger": {
+      "main": [
+        [
+          { "node": "Only Opened Issues", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Only Opened Issues": {
+      "main": [
+        [
+          { "node": "Claudeway: Analyze Issue", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Claudeway: Analyze Issue": {
+      "main": [
+        [
+          { "node": "Parse Analysis", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Parse Analysis": {
+      "main": [
+        [
+          { "node": "Slack: Send Analysis", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

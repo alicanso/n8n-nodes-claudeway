@@ -1,0 +1,57 @@
+{
+	"name": "n8n-nodes-claudeway",
+	"version": "0.1.0",
+	"description": "n8n community node for Claudeway - Claude CLI HTTP Gateway",
+	"keywords": [
+		"n8n-community-node-package",
+		"claude",
+		"claudeway",
+		"ai",
+		"llm"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/alicansoysal/n8n-nodes-claudeway",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/alicansoysal/n8n-nodes-claudeway.git"
+	},
+	"main": "dist/nodes/Claudeway/Claudeway.node.js",
+	"scripts": {
+		"build": "tsc && gulp build:icons",
+		"dev": "tsc --watch",
+		"format": "prettier nodes credentials --write",
+		"lint": "eslint nodes credentials --ext .ts",
+		"test": "jest",
+		"prepublishOnly": "npm run build"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"credentials": [
+			"dist/credentials/ClaudewayApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Claudeway/Claudeway.node.js",
+			"dist/nodes/LmChatClaudeway/LmChatClaudeway.node.js"
+		]
+	},
+	"devDependencies": {
+		"@types/jest": "^29.5.12",
+		"@types/node": "^22.0.0",
+		"@typescript-eslint/eslint-plugin": "^7.0.0",
+		"@typescript-eslint/parser": "^7.0.0",
+		"eslint": "^8.56.0",
+		"gulp": "^4.0.2",
+		"jest": "^29.7.0",
+		"n8n-workflow": "^1.0.0",
+		"prettier": "^3.2.0",
+		"ts-jest": "^29.1.0",
+		"typescript": "^5.4.0"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*",
+		"@langchain/core": ">=0.2.0"
+	}
+}
