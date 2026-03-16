@@ -38,6 +38,7 @@
 		]
 	},
 	"devDependencies": {
+		"@langchain/core": ">=0.2.0",
 		"@types/jest": "^29.5.12",
 		"@types/node": "^22.0.0",
 		"@typescript-eslint/eslint-plugin": "^7.0.0",
@@ -51,8 +52,8 @@
 		"typescript": "^5.4.0"
 	},
 	"peerDependencies": {
-		"n8n-workflow": "*",
-		"@langchain/core": ">=0.2.0"
+		"@langchain/core": ">=0.2.0",
+		"n8n-workflow": "*"
 	},
 	"packageManager": "pnpm@10.29.3"
 }
