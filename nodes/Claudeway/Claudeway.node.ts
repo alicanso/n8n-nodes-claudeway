@@ -13,7 +13,6 @@ import { claudewayApiRequest, claudewayApiRequestSSE } from './GenericFunctions'
 import { taskOperations, taskFields } from './descriptions/TaskDescription';
 import { sessionOperations, sessionFields } from './descriptions/SessionDescription';
 import { adminOperations, adminFields } from './descriptions/AdminDescription';
-import { repoOperations, repoFields } from './descriptions/RepoDescription';
 
 export class Claudeway implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,10 +53,6 @@ export class Claudeway implements INodeType {
 						name: 'Admin',
 						value: 'admin',
 					},
-					{
-						name: 'Repo',
-						value: 'repo',
-					},
 				],
 				default: 'task',
 			},
@@ -67,8 +62,6 @@ export class Claudeway implements INodeType {
 			...sessionFields,
 			...adminOperations,
 			...adminFields,
-			...repoOperations,
-			...repoFields,
 		],
 	};
 
@@ -110,8 +103,6 @@ export class Claudeway implements INodeType {
 					responseData = await executeSession.call(this, operation, i);
 				} else if (resource === 'admin') {
 					responseData = await executeAdmin.call(this, operation, i);
-				} else if (resource === 'repo') {
-					responseData = await executeRepo.call(this, operation, i);
 				} else {
 					throw new NodeOperationError(this.getNode(), `Unknown resource: ${resource}`, { itemIndex: i });
 				}
@@ -133,6 +124,30 @@ export class Claudeway implements INodeType {
 	}
 }
 
+async function resolveWorkdir(
+	this: IExecuteFunctions,
+	itemIndex: number,
+): Promise<string | undefined> {
+	const workdirSource = this.getNodeParameter('workdirSource', itemIndex, 'none') as string;
+
+	if (workdirSource === 'gitRepo') {
+		const repoUrl = this.getNodeParameter('repoUrl', itemIndex) as string;
+		const branch = this.getNodeParameter('repoBranch', itemIndex, '') as string;
+
+		const syncBody: IDataObject = { url: repoUrl };
+		if (branch) syncBody.branch = branch;
+
+		const syncResult = await claudewayApiRequest.call(this, 'POST', '/repos/sync', syncBody);
+		return syncResult.path as string;
+	}
+
+	if (workdirSource === 'customPath') {
+		return this.getNodeParameter('workdir', itemIndex) as string;
+	}
+
+	return undefined;
+}
+
 async function executeTask(
 	this: IExecuteFunctions,
 	operation: string,
@@ -143,14 +158,15 @@ async function executeTask(
 	const model = this.getNodeParameter('model', itemIndex, '') as string;
 	const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as {
 		systemPrompt?: string;
-		workdir?: string;
 		timeoutSecs?: number;
 	};
+
+	const workdir = await resolveWorkdir.call(this, itemIndex);
 
 	const body: IDataObject = { prompt };
 	if (model) body.model = model;
 	if (additionalFields.systemPrompt) body.system_prompt = additionalFields.systemPrompt;
-	if (additionalFields.workdir) body.workdir = additionalFields.workdir;
+	if (workdir) body.workdir = workdir;
 
 	const timeoutSecs = additionalFields.timeoutSecs || 120;
 
@@ -182,13 +198,14 @@ async function executeSession(
 		const model = this.getNodeParameter('model', itemIndex, '') as string;
 		const additionalFields = this.getNodeParameter('additionalFields', itemIndex, {}) as {
 			systemPrompt?: string;
-			workdir?: string;
 		};
+
+		const workdir = await resolveWorkdir.call(this, itemIndex);
 
 		const body: IDataObject = {};
 		if (model) body.model = model;
 		if (additionalFields.systemPrompt) body.system_prompt = additionalFields.systemPrompt;
-		if (additionalFields.workdir) body.workdir = additionalFields.workdir;
+		if (workdir) body.workdir = workdir;
 
 		return claudewayApiRequest.call(this, 'POST', '/session/start', body);
 	}
@@ -250,27 +267,4 @@ async function executeAdmin(
 	}
 
 	throw new NodeOperationError(this.getNode(), `Unknown admin operation: ${operation}`, { itemIndex });
-}
-
-async function executeRepo(
-	this: IExecuteFunctions,
-	operation: string,
-	itemIndex: number,
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<any> {
-	if (operation === 'sync') {
-		const repoUrl = this.getNodeParameter('repoUrl', itemIndex) as string;
-		const branch = this.getNodeParameter('branch', itemIndex, '') as string;
-
-		const body: IDataObject = { url: repoUrl };
-		if (branch) body.branch = branch;
-
-		return claudewayApiRequest.call(this, 'POST', '/repos/sync', body);
-	}
-
-	if (operation === 'list') {
-		return claudewayApiRequest.call(this, 'GET', '/repos');
-	}
-
-	throw new NodeOperationError(this.getNode(), `Unknown repo operation: ${operation}`, { itemIndex });
 }
