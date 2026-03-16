@@ -53,5 +53,6 @@
 	"peerDependencies": {
 		"n8n-workflow": "*",
 		"@langchain/core": ">=0.2.0"
-	}
+	},
+	"packageManager": "pnpm@10.29.3"
 }
