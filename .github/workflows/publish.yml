@@ -27,22 +27,16 @@ jobs:
       - run: pnpm test
       - run: pnpm run build
 
-      - name: Check if version changed
+      - name: Bump version from npm
         id: version
         run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
           NPM_VERSION=$(npm view n8n-nodes-claudeway version 2>/dev/null || echo "0.0.0")
-          if [ "$PACKAGE_VERSION" != "$NPM_VERSION" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
-            echo "Publishing $PACKAGE_VERSION (npm has $NPM_VERSION)"
-          else
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "Version $PACKAGE_VERSION already published, skipping"
-          fi
+          NEW_VERSION=$(node -e "const v = '${NPM_VERSION}'.split('.'); v[2] = parseInt(v[2]) + 1; console.log(v.join('.'))")
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Bumping from $NPM_VERSION to $NEW_VERSION"
+          npm version "$NEW_VERSION" --no-git-tag-version
 
       - name: Publish to npm
-        if: steps.version.outputs.changed == 'true'
         run: |
           echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> .npmrc
           pnpm publish --provenance --access public --no-git-checks
@@ -50,10 +44,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Generate changelog
-        if: steps.version.outputs.changed == 'true'
         id: changelog
         run: |
-          VERSION=${{ steps.version.outputs.version }}
           PREV_TAG=$(git tag --sort=-v:refname | head -1)
           if [ -z "$PREV_TAG" ]; then
             CHANGES=$(git log --pretty=format:"- %s" HEAD)
@@ -66,7 +58,6 @@ jobs:
           echo "$EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        if: steps.version.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
